@@ -42,6 +42,97 @@ class LinearModel(nn.Module):
         return logits
 
     def train_model(self, train_loader, test_loader, num_epochs):
+        # clear training history
+        self.history['loss'] = []
+        self.history['training_time'] = 0.0
+
+        # For each epoch, run the training loop, then run the test (really validation) loop
+        start_time = py_time()
+        for t in range(num_epochs):
+            print(f'EPOCH {t+1}\n-----------------------------')
+            self.train_loop(train_loader)
+            test_loss = self.test_loop(test_loader)
+
+            self.history['loss'].append(test_loss)
+
+        end_time = py_time()
+        self.history['training_time'] = end_time - start_time
+        print('DONE!')
+
+    def train_loop(self, dataloader):
+        size = len(dataloader.dataset)
+        self.train()
+
+        # train_loop
+        for batch, (X,y) in enumerate(dataloader):
+            # compute loss
+            pred = self.forward(X)
+            loss = self.loss_fn(pred, y)
+
+            # backpropgation
+            loss.backward()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+
+            if batch % 100 == 0:
+                loss, current = loss.item(), batch * dataloader.batch_size + len(X)
+                print(f'loss: {loss:>7f} [{current:>5d}/{size:>5d}]')
+
+    def test_loop(self, dataloader) -> float:
+        self.eval()
+        size = len(dataloader.dataset)
+        num_batches = len(dataloader)
+        test_loss, correct = 0, 0
+
+        with no_grad():
+            for X, y in dataloader:
+                pred = self.forward(X)
+                test_loss += self.loss_fn(pred, y).item()
+                correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+
+        test_loss /= num_batches
+        correct /= size
+        print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
+        return test_loss
+
+    def display_training_history(self, output_file='./fig.png'):
+        plt.plot(range(len(self.history['loss'])), self.history['loss'])
+        plt.title(f'Training Time: {self.history['training_time']:>2f} Seconds')
+        plt.savefig(output_file)
+
+class ConvolutionalModel(nn.Module):
+    """
+    class to represent a very simple nn
+    """
+    def __init__(self, lr):
+        super().__init__()
+        self.linear_reul_stack = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Flatten(),
+            nn.Linear(32*7*7, 128),
+            nn.ReLU(),
+            nn.Linear(128, 10)
+        )
+
+        self.learning_rate = lr
+        self.optimizer = optim.SGD(self.parameters(), lr=self.learning_rate)
+        self.loss_fn = nn.CrossEntropyLoss()
+        self.history = {'loss': [], 'training_time': 0.0}
+
+    def forward(self, x):
+        """
+        Forward pass
+        """
+        logits = self.linear_reul_stack(x)
+        return logits
+
+    def train_model(self, train_loader, test_loader, num_epochs):
 
         # clear training history
         self.history['loss'] = []
@@ -100,5 +191,9 @@ class LinearModel(nn.Module):
 
     def display_training_history(self, output_file='./fig.png'):
         plt.plot(range(len(self.history['loss'])), self.history['loss'])
-        plt.title(f'Training Time: {self.history['training_time']:>2f} Seconds')
+        plt.title(f"Training Time: {self.history['training_time']:>2f} Seconds")
+
+        # TODO: OKAY, I'm aware that there is a bug here where I don't use plt properly and
+        # that subsequent calls of this function will probably add additional lines containing
+        # the different models that are available. I don't care right now and I may fix it later.
         plt.savefig(output_file)
