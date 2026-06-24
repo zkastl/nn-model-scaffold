@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+## Other File types
+
+# Image Files
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.gif
+*.svg

@@ -7,7 +7,7 @@ import uuid
 from torch.utils.data import DataLoader
 
 from mnist_from_scratch import MNISTFromScratch
-from imdb_dataset import load_imdb
+from imdb_dataset import IMDBFromScratch
 from model import ConvolutionalModel, LinearModel
 
 ###########################
@@ -33,13 +33,10 @@ image_train, label_train = next(iter(train_loader))
 image_test, label_test = next(iter(test_loader))
 
 # TEXT DATASET
-train_texts, train_labels = load_imdb(TRAIN_TEXT_DIR)
-
+train_texts, train_labels = IMDBFromScratch.load_imdb(TRAIN_TEXT_DIR)
 
 
 # MODELS
-
-
 
 # Train and save model 1
 model = LinearModel(lr=0.01)

@@ -5,6 +5,8 @@ for all your modelling needs
 """
 # pylint: disable=C0116, C0103
 
+import os
+import re
 from time import time as py_time
 
 import torch
@@ -31,7 +33,10 @@ class LinearModel(nn.Module):
         self.learning_rate = lr
         self.optimizer = optim.SGD(self.parameters(), lr=self.learning_rate)
         self.loss_fn = nn.CrossEntropyLoss()
-        self.history = {'loss': [], 'training_time': 0.0}
+        self.history = {
+            'loss': [],
+            'training_time': 0.0,
+            }
 
     def forward(self, x):
         """
@@ -50,8 +55,8 @@ class LinearModel(nn.Module):
         start_time = py_time()
         for t in range(num_epochs):
             print(f'EPOCH {t+1}\n-----------------------------')
-            self.train_loop(train_loader)
-            test_loss = self.test_loop(test_loader)
+            self._train_loop(train_loader)
+            test_loss = self._test_loop(test_loader)
 
             self.history['loss'].append(test_loss)
 
@@ -59,7 +64,7 @@ class LinearModel(nn.Module):
         self.history['training_time'] = end_time - start_time
         print('DONE!')
 
-    def train_loop(self, dataloader):
+    def _train_loop(self, dataloader):
         size = len(dataloader.dataset)
         self.train()
 
@@ -78,7 +83,7 @@ class LinearModel(nn.Module):
                 loss, current = loss.item(), batch * dataloader.batch_size + len(X)
                 print(f'loss: {loss:>7f} [{current:>5d}/{size:>5d}]')
 
-    def test_loop(self, dataloader) -> float:
+    def _test_loop(self, dataloader) -> float:
         self.eval()
         size = len(dataloader.dataset)
         num_batches = len(dataloader)
@@ -197,3 +202,34 @@ class ConvolutionalModel(nn.Module):
         # that subsequent calls of this function will probably add additional lines containing
         # the different models that are available. I don't care right now and I may fix it later.
         plt.savefig(output_file)
+
+class RNNModel(nn.Module):
+    """
+    class to represent a very simple rnn for sentiment analysis
+    """
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x):
+        pass
+
+    @classmethod
+    def tokenize(cls, text:str) -> list[str]:
+        text = text.lower()
+        text = re.sub(r'<br\s*/?>', ' ', text)      # IMDB has HTML breaks '<br />'
+        text = re.sub(r'[^a-z0-9\s]', '', text)     # strip punctuation
+        return text.split()
+
+
+def load_imdb(data_dir):
+    texts, labels = [], []
+
+    for label_name, label_val in [('pos', 1), ('neg', 0)]:
+        folder = os.path.join(data_dir, label_name)
+        for fname in os.listdir(folder):
+            if fname.endswith('.txt'):
+                with open(os.path.join(folder, fname), 'r', encoding='utf-8') as f:
+                    texts.append(f.read())
+                    labels.append(label_val)
+
+    return texts, labels
